@@ -20,7 +20,10 @@
 //    Veja o main.  Ele instancia o Sistema com os elementos mencionados acima.
 //           em seguida solicita a execução de algum programa com  loadAndExec
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
 
 public class Sistema {
 
@@ -421,198 +424,361 @@ public class Sistema {
             }
         }
     }
-        // ------------------ C P U - fim
-        // -----------------------------------------------------------------------
-        // ------------------------------------------------------------------------------------------------------
+    // ------------------ C P U - fim
+    // -----------------------------------------------------------------------
+    // ------------------------------------------------------------------------------------------------------
 
-        // ------------------- HW - constituido de CPU e MEMORIA
-        // -----------------------------------------------
-        public class HW {
-            public Memory mem;
-            public CPU cpu;
+    // ------------------- HW - constituido de CPU e MEMORIA
+    // -----------------------------------------------
+    public class HW {
+        public Memory mem;
+        public CPU cpu;
 
-            public HW(int tamMem) {
-                mem = new Memory(tamMem);
-                cpu = new CPU(mem, true); // true liga debug
-            }
+        public HW(int tamMem) {
+            mem = new Memory(tamMem);
+            cpu = new CPU(mem, true); // true liga debug
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------------------
+
+    // --------------------H A R D W A R E - fim
+    // -------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------------------
+
+    // ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // -------------------------------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------------------------------
+    // ------------------- SW - inicio - Sistema Operacional
+    // -------------------------------------------------
+
+    // ------------------- I N T E R R U P C O E S - rotinas de tratamento
+    // ----------------------------------
+    public class InterruptHandling {
+        private HW hw; // referencia ao hw se tiver que setar algo
+
+        public InterruptHandling(HW _hw) {
+            hw = _hw;
         }
 
-        // -------------------------------------------------------------------------------------------------------
+        public void handle(Interrupts irpt) {
+            // apenas avisa - todas interrupcoes neste momento finalizam o programa
+            System.out.println(
+                    "                                               Interrupcao " + irpt + "   pc: " + hw.cpu.pc);
+        }
+    }
 
-        // --------------------H A R D W A R E - fim
-        // -------------------------------------------------------------
-        // -------------------------------------------------------------------------------------------------------
+    // ------------------- C H A M A D A S D E S I S T E M A - rotinas de tratamento
+    // ----------------------
+    public class SysCallHandling {
+        private HW hw; // referencia ao hw se tiver que setar algo
 
-        // ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // -------------------------------------------------------------------------------------------------------
-        // -------------------------------------------------------------------------------------------------------
-        // ------------------- SW - inicio - Sistema Operacional
-        // -------------------------------------------------
-
-        // ------------------- I N T E R R U P C O E S - rotinas de tratamento
-        // ----------------------------------
-        public class InterruptHandling {
-            private HW hw; // referencia ao hw se tiver que setar algo
-
-            public InterruptHandling(HW _hw) {
-                hw = _hw;
-            }
-
-            public void handle(Interrupts irpt) {
-                // apenas avisa - todas interrupcoes neste momento finalizam o programa
-                System.out.println(
-                        "                                               Interrupcao " + irpt + "   pc: " + hw.cpu.pc);
-            }
+        public SysCallHandling(HW _hw) {
+            hw = _hw;
         }
 
-        // ------------------- C H A M A D A S D E S I S T E M A - rotinas de tratamento
-        // ----------------------
-        public class SysCallHandling {
-            private HW hw; // referencia ao hw se tiver que setar algo
-
-            public SysCallHandling(HW _hw) {
-                hw = _hw;
-            }
-
-            public void stop() { // chamada de sistema indicando final de programa
-                // nesta versao cpu simplesmente pára
-                System.out.println("                                               SYSCALL STOP");
-            }
-
-            public void handle() { // chamada de sistema
-                // suporta somente IO, com parametros
-                // reg[8] = in ou out    e reg[9] endereco do inteiro
-                System.out.println("SYSCALL pars:  " + hw.cpu.reg[8] + " / " + hw.cpu.reg[9]);
-
-                if (hw.cpu.reg[8] == 1) {
-                    // leitura ...
-
-                } else if (hw.cpu.reg[8] == 2) {
-                    // escrita - escreve o conteuodo da memoria na posicao dada em reg[9]
-                    System.out.println("OUT:   " + hw.mem.pos[hw.cpu.reg[9]].p);
-                } else {
-                    System.out.println("  PARAMETRO INVALIDO");
-                }
-            }
+        public void stop() { // chamada de sistema indicando final de programa
+            // nesta versao cpu simplesmente pára
+            System.out.println("                                               SYSCALL STOP");
         }
 
-        // ------------------ U T I L I T A R I O S D O S I S T E M A
-        // -----------------------------------------
-        // ------------------ load é invocado a partir de requisição do usuário
+        public void handle() { // chamada de sistema
+            // suporta somente IO, com parametros
+            // reg[8] = in ou out    e reg[9] endereco do inteiro
+            System.out.println("SYSCALL pars:  " + hw.cpu.reg[8] + " / " + hw.cpu.reg[9]);
 
-        // carga na memória
-        public class Utilities {
-            private HW hw;
+            if (hw.cpu.reg[8] == 1) {
+                Scanner sc = new Scanner(System.in);
+                System.out.print("IN: ");
+                hw.mem.pos[hw.cpu.traduzEndereco(hw.cpu.reg[9])].p = sc.nextInt();
 
-            public Utilities(HW _hw) {
-                hw = _hw;
-            }
-
-            private void loadProgram(Word[] p, GM gm, int[] tabelaPaginas) {
-                int tamPg = gm.tamPg;
-                for (int i = 0; i < p.length; i++) {
-                    int pagina = i / tamPg;
-                    int offset = i % tamPg;
-                    int frame = tabelaPaginas[pagina];
-                    int enderecoFisico = frame * tamPg + offset;
-
-                    hw.mem.pos[enderecoFisico].opc = p[i].opc;
-                    hw.mem.pos[enderecoFisico].ra = p[i].ra;
-                    hw.mem.pos[enderecoFisico].rb = p[i].rb;
-                    hw.mem.pos[enderecoFisico].p = p[i].p;
-                }
-            }
-
-            // dump da memória
-            public void dump(Word w) { // funcoes de DUMP nao existem em hardware - colocadas aqui para facilidade
-                System.out.print("[ ");
-                System.out.print(w.opc);
-                System.out.print(", ");
-                System.out.print(w.ra);
-                System.out.print(", ");
-                System.out.print(w.rb);
-                System.out.print(", ");
-                System.out.print(w.p);
-                System.out.println("  ] ");
-            }
-
-            public void dump(int ini, int fim) {
-                Word[] m = hw.mem.pos; // m[] é o array de posições memória do hw
-                for (int i = ini; i < fim; i++) {
-                    System.out.print(i);
-                    System.out.print(":  ");
-                    dump(m[i]);
-                }
-            }
-
-            private void loadAndExec(Word[] p, GM gm) {
-
-                int nroPaginas = (int) Math.ceil((double) p.length / gm.tamPg);
-                int[] tabelaPaginas = new int[nroPaginas];
-
-                if (!gm.aloca(p.length, tabelaPaginas)) {
-                    System.out.println("Memória insuficiente");
-                    return;
-                }
-
-                loadProgram(p, gm, tabelaPaginas);
-                System.out.println("---------------------------------- programa carregado na memoria");
-
-                hw.cpu.setContext(0, tabelaPaginas, gm.tamPg);
-                System.out.println("---------------------------------- inicia execucao ");
-
-                hw.cpu.run();
-                System.out.println("---------------------------------- memoria após execucao ");
-
-                gm.desaloca(tabelaPaginas);
-
+            } else if (hw.cpu.reg[8] == 2) {
+                // escrita - escreve o conteuodo da memoria na posicao dada em reg[9]
+                System.out.println("OUT:   " + hw.mem.pos[hw.cpu.reg[9]].p);
+            } else {
+                System.out.println("  PARAMETRO INVALIDO");
             }
         }
+    }
 
+    public class PCB {
+        public int id;
+        public int pc;
+        public int[] reg;
+        public int[] tabelaPaginas;
+        public String estado; // "ready", "running", "blocked"
 
-        public class SO {
-            public InterruptHandling ih;
-            public SysCallHandling sc;
-            public Utilities utils;
-
-            public SO(HW hw) {
-                ih = new InterruptHandling(hw); // rotinas de tratamento de int
-                sc = new SysCallHandling(hw); // chamadas de sistema
-                hw.cpu.setAddressOfHandlers(ih, sc);
-                utils = new Utilities(hw);
-            }
+        public PCB(int id, int[] tabelaPaginas) {
+            this.id = id;
+            this.pc = 0;
+            this.reg = new int[10];
+            this.tabelaPaginas = tabelaPaginas;
+            this.estado = "ready";
         }
-        // -------------------------------------------------------------------------------------------------------
-        // ------------------- S I S T E M A
-        // --------------------------------------------------------------------
+    }
 
+    public class GP {
+        public GM gm;
         public HW hw;
-        public SO so;
-        public Programs progs;
+        private int num = 1;
+        public ArrayList<PCB> Prontos = new ArrayList<>();
+        public PCB rodando = null;
 
-        public Sistema(int tamMem) {
-            hw = new HW(tamMem);           // memoria do HW tem tamMem palavras
-            so = new SO(hw);
-            hw.cpu.setUtilities(so.utils); // permite cpu fazer dump de memoria ao avancar
-            progs = new Programs();
+        public GP(HW _hw, GM _gm) {
+            hw = _hw;
+            gm = _gm;
         }
 
-        public void executarSistema() {
+        public int criaProcesso(Word[] programa) {
+            int nroPaginas = (int) Math.ceil((double) programa.length / gm.tamPg);
+            int[] tabelaPaginas = new int[nroPaginas];
 
-            GM gm = new GM(1024, 8);
+            if (!gm.aloca(programa.length, tabelaPaginas)) {
+                System.out.println("Não é possível alocar a memória ");
+                return -1;
+            }
 
-            so.utils.loadAndExec(progs.retrieveProgram("fatorialV2"), gm);
+            // carrega o programa alocado
+            for (int i = 0; i < programa.length; i++) {
+                int frame  = tabelaPaginas[i / gm.tamPg];
+                int offset = i % gm.tamPg;
+                int index    = frame * gm.tamPg + offset;
+                hw.mem.pos[index].opc = programa[i].opc;
+                hw.mem.pos[index].ra  = programa[i].ra;
+                hw.mem.pos[index].rb  = programa[i].rb;
+                hw.mem.pos[index].p   = programa[i].p;
+            }
 
-            // so.utils.loadAndExec(progs.retrieveProgram("fatorial"));
-            // fibonacci10,
-            // fibonacci10v2,
-            // progMinimo,
-            // fatorialWRITE, // saida
-            // fibonacciREAD, // entrada
-            // PB
-            // PC, // bubble sort
+            PCB pcb = new PCB(num++, tabelaPaginas);
+            Prontos.add(pcb);
+
+            System.out.println("Novo Processo com id: " + pcb.id);
+            return pcb.id;
         }
+
+        public PCB buscaPCB(int id) {
+            if (rodando != null && rodando.id == id) return rodando;
+            for (PCB p : Prontos) {
+                if (p.id == id) return p;
+            }
+            return null;
+        }
+
+        public void desalocaProcesso(int id) {
+            PCB pcb = buscaPCB(id);
+            if (pcb == null) {
+                System.out.println("Processo não encontrado");
+                return;
+            }
+            gm.desaloca(pcb.tabelaPaginas);
+            Prontos.remove(pcb);
+            if (rodando != null && rodando.id == id) {
+                rodando = null;
+            }
+            System.out.println("Processo " + id + " removido");
+        }
+
+
+        public void listProcessos() {
+            System.out.println("Processos:");
+            if (rodando != null)
+                System.out.println("  [running] id:" + rodando.id);
+            for (PCB p : Prontos)
+                System.out.println("  [ready]   id:" + p.id);
+        }
+    }
+
+    // ------------------ U T I L I T A R I O S D O S I S T E M A
+    // -----------------------------------------
+    // ------------------ load é invocado a partir de requisição do usuário
+
+    // carga na memória
+    public class Utilities {
+        private HW hw;
+
+        public Utilities(HW _hw) {
+            hw = _hw;
+        }
+
+        private void loadProgram(Word[] p, GM gm, int[] tabelaPaginas) {
+            int tamPg = gm.tamPg;
+            for (int i = 0; i < p.length; i++) {
+                int pagina = i / tamPg;
+                int offset = i % tamPg;
+                int frame = tabelaPaginas[pagina];
+                int enderecoFisico = frame * tamPg + offset;
+
+                hw.mem.pos[enderecoFisico].opc = p[i].opc;
+                hw.mem.pos[enderecoFisico].ra = p[i].ra;
+                hw.mem.pos[enderecoFisico].rb = p[i].rb;
+                hw.mem.pos[enderecoFisico].p = p[i].p;
+            }
+        }
+
+        // dump da memória
+        public void dump(Word w) { // funcoes de DUMP nao existem em hardware - colocadas aqui para facilidade
+            System.out.print("[ ");
+            System.out.print(w.opc);
+            System.out.print(", ");
+            System.out.print(w.ra);
+            System.out.print(", ");
+            System.out.print(w.rb);
+            System.out.print(", ");
+            System.out.print(w.p);
+            System.out.println("  ] ");
+        }
+
+        public void dump(int ini, int fim) {
+            Word[] m = hw.mem.pos; // m[] é o array de posições memória do hw
+            for (int i = ini; i < fim; i++) {
+                System.out.print(i);
+                System.out.print(":  ");
+                dump(m[i]);
+            }
+        }
+
+        private void loadAndExec(Word[] p, GM gm) {
+
+            int nroPaginas = (int) Math.ceil((double) p.length / gm.tamPg);
+            int[] tabelaPaginas = new int[nroPaginas];
+
+            if (!gm.aloca(p.length, tabelaPaginas)) {
+                System.out.println("Memória insuficiente");
+                return;
+            }
+
+            loadProgram(p, gm, tabelaPaginas);
+            System.out.println("---------------------------------- programa carregado na memoria");
+
+            hw.cpu.setContext(0, tabelaPaginas, gm.tamPg);
+            System.out.println("---------------------------------- inicia execucao ");
+
+            hw.cpu.run();
+            System.out.println("---------------------------------- memoria após execucao ");
+
+            gm.desaloca(tabelaPaginas);
+
+        }
+    }
+
+
+    public class SO {
+        public InterruptHandling ih;
+        public SysCallHandling sc;
+        public Utilities utils;
+        public GP gp;
+
+        public SO(HW hw) {
+            ih = new InterruptHandling(hw); // rotinas de tratamento de int
+            sc = new SysCallHandling(hw); // chamadas de sistema
+            hw.cpu.setAddressOfHandlers(ih, sc);
+            utils = new Utilities(hw);
+        }
+    }
+    // -------------------------------------------------------------------------------------------------------
+    // ------------------- S I S T E M A
+    // --------------------------------------------------------------------
+
+    public HW hw;
+    public SO so;
+    public Programs progs;
+
+    public Sistema(int tamMem) {
+        hw = new HW(tamMem);           // memoria do HW tem tamMem palavras
+        so = new SO(hw);
+        hw.cpu.setUtilities(so.utils); // permite cpu fazer dump de memoria ao avancar
+        progs = new Programs();
+    }
+
+    public void executarSistema() {
+
+        GM gm = new GM(1024, 8);
+        so.gp = new GP(hw, gm);
+
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Comandos: new <prog>, rm <id>, ps, exec <id>, dump <id>, dumpM <ini> <fim>, traceOn, traceOff, exit");
+
+        while (true) {
+            System.out.print("> ");
+            String linha = scanner.nextLine().trim();
+            String[] partes = linha.split(" ");
+
+            switch (partes[0]) {
+                case "new":
+                    Word[] prog = progs.retrieveProgram(partes[1]);
+                    if (prog == null) System.out.println("Programa não encontrado");
+                    else so.gp.criaProcesso(prog);
+                    break;
+
+                case "rm":
+                    so.gp.desalocaProcesso(Integer.parseInt(partes[1]));
+                    break;
+
+                case "ps":
+                    so.gp.listProcessos();
+                    break;
+
+                case "exec":
+                    PCB pcb = so.gp.buscaPCB(Integer.parseInt(partes[1]));
+
+                    if (pcb == null) { System.out.println("Processo não encontrado"); break; }
+
+                    so.gp.Prontos.remove(pcb);
+                    pcb.estado = "running";
+
+                    so.gp.rodando = pcb;
+                    hw.cpu.setContext(pcb.pc, pcb.tabelaPaginas, gm.tamPg);
+                    hw.cpu.reg = pcb.reg.clone();
+
+                    hw.cpu.run();
+
+                    pcb.pc = hw.cpu.pc;
+                    pcb.reg = hw.cpu.reg.clone();
+
+                    pcb.estado = "ready";
+                    so.gp.Prontos.add(pcb);
+
+                    so.gp.rodando = null;
+                    break;
+
+                case "dump":
+                    PCB p = so.gp.buscaPCB(Integer.parseInt(partes[1]));
+                    if (p == null) { System.out.println("Processo não encontrado"); break; }
+
+                    System.out.println("id:" + p.id + " pc:" + p.pc + " estado:" + p.estado);
+
+                    System.out.print("registradores: ");
+                    for (int r : p.reg) System.out.print(r + " ");
+
+                    break;
+
+                case "dumpM":
+                    so.utils.dump(Integer.parseInt(partes[1]), Integer.parseInt(partes[2]));
+                    break;
+
+                case "traceOn":  hw.cpu.debug = true;  break;
+                case "traceOff": hw.cpu.debug = false; break;
+
+                case "exit":
+                    System.out.println("Encerrado");
+                    return;
+
+                default:
+                    System.out.println("Digite algo válido");
+            }
+        }
+
+
+    // so.utils.loadAndExec(progs.retrieveProgram("fatorial"));
+        // fibonacci10,
+        // fibonacci10v2,
+        // progMinimo,
+        // fatorialWRITE, // saida
+        // fibonacciREAD, // entrada
+        // PB
+        // PC, // bubble sort
+    }
     // ------------------- S I S T E M A - fim
     // --------------------------------------------------------------
     // -------------------------------------------------------------------------------------------------------
